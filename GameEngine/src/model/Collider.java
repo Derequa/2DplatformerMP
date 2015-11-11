@@ -1,5 +1,9 @@
 package model;
 
+import java.util.Hashtable;
+
+import events.CollisionEvent;
+
 /**
  * This class defines and handles collisions between rectangle GameObjects
  * @author Derek Batts
@@ -7,22 +11,28 @@ package model;
  */
 public class Collider {
 	
+	Hashtable<Integer, GameObject> objects = null;
+	
+	public Collider(Hashtable<Integer, GameObject> objects){
+		this.objects = objects;
+	}
+	
 	/**
 	 * This is a front-end method that collides any two rectangle game objects
 	 * @param g1
 	 * @param g2
 	 */
-	public void collide(GameObject g1, GameObject g2){
+	private void collide(GameObject g1, GameObject g2){
 		// Are they both moveable
-		if (g1.isMoveable() && g2.isMoveable() && !(g1 instanceof Player) && !(g2 instanceof Player))
+		if ((g1 instanceof Moveable) && (g2 instanceof Moveable) && !(g1 instanceof Player) && !(g2 instanceof Player))
 			collide2Moveable((Moveable) g1, (Moveable) g2);
 		// Is at least one moveable
-		else if (g1.isMoveable())
+		else if (g1 instanceof Moveable)
 			collideMoveableStatic((Moveable) g1, g2);
-		else if (g2.isMoveable())
+		else if (g2 instanceof Moveable)
 			collideMoveableStatic((Moveable) g2, g1);
 		// Two static objects should never collide
-		else throw new IllegalArgumentException("Static Objects Shouldn't be colliding!");
+		//else throw new IllegalArgumentException("Static Objects Shouldn't be colliding!");
 	}
 	
 	// An easy way to check collisions
@@ -82,7 +92,7 @@ public class Collider {
 			// Respond to colliding from top
 			if(collidedFromTop){
 				((GameObject) m).collidedFromTop = true;
-				((GameObject) m).colliderTop = g.getShape();
+				((GameObject) m).colliderTop = g;
 				// Only change m if it is not collided
 				if(!m.isCollided()){
 					if(m.caresAboutFloors() && g.isStatic()){
@@ -94,7 +104,7 @@ public class Collider {
 			// Respond to colliding from bottom
 			else if(collidedFromBottom){
 				((GameObject) m).collidedFromBottom = true;
-				((GameObject) m).colliderBottom = g.getShape();
+				((GameObject) m).colliderBottom = g;
 				if(!m.isCollided())
 					m.vSetY(-m.vGetY());
 			}
@@ -104,38 +114,64 @@ public class Collider {
 					m.vSetX(-m.vGetX());
 				if(collidedFromLeft){
 					((GameObject) m).collidedFromLeft = true;
-					((GameObject) m).colliderLeft = g.getShape();
+					((GameObject) m).colliderLeft = g;
 				}
 				if(collidedFromRight){
 					((GameObject) m).collidedFromRight = true;
-					((GameObject) m).colliderRight = g.getShape();
+					((GameObject) m).colliderRight = g;
 				}
 			}
 			
 			// Signal collision
 			m.setCollided(true);
-			((GameObject) m).collidedWith.put(g.getShape(), new Boolean(true));
-		} 
-		else {
-			// Signal we are no longer collided
-			((GameObject) m).collidedWith.put(g.getShape(), new Boolean(false));
-			if(((GameObject) m).colliderLeft != null && ((GameObject) m).colliderLeft.equals(g.getShape()))
-				((GameObject) m).collidedFromLeft = false;
-			else if(((GameObject) m).colliderRight != null && ((GameObject) m).colliderRight.equals(g.getShape()))
-				((GameObject) m).collidedFromRight = false;
-			else if(((GameObject) m).colliderTop != null && ((GameObject) m).colliderTop.equals(g.getShape()))
-				((GameObject) m).collidedFromTop = false;
-			else if(((GameObject) m).colliderBottom != null && ((GameObject) m).colliderBottom.equals(g.getShape()))
-				((GameObject) m).collidedFromBottom = false;
-		}
-		// Check for no collisions
-		if(!((GameObject) m).collidedWith.containsValue(new Boolean(true))){
-			m.setCollided(false);
-			m.setOnFloor(false);
-			((GameObject) m).collidedFromBottom = false;
-			((GameObject) m).collidedFromLeft = false;
-			((GameObject) m).collidedFromRight = false;
-			((GameObject) m).collidedFromTop = false;
+			((GameObject) m).collidedWith.put(g, new Boolean(true));
 		}
 	}
+	
+	public void handleCollisionEvent(CollisionEvent e){
+		if(objects.containsKey(new Integer(e.guid1)) && objects.containsKey(new Integer(e.guid2)))
+			collide(objects.get(new Integer(e.guid1)), objects.get(new Integer(e.guid2)));
+		
+	}
+	
+	public void handleNoCollide(GameObject g1, GameObject g2){
+		
+		if((g1 instanceof Moveable) && (g2 instanceof Moveable) && !(g1 instanceof Player) && !(g2 instanceof Player)){
+			((Moveable) g1).setCollided(false);
+			((Moveable) g2).setCollided(false);
+		}
+		else if((g1 instanceof Moveable) && (g2 instanceof Moveable)){
+			clearCollisions((Moveable) g1, g2);
+			clearCollisions((Moveable) g2, g1);
+		}
+		else if(g1 instanceof Moveable)
+			clearCollisions((Moveable) g1, g2);
+		else if(g2 instanceof Moveable)
+			clearCollisions((Moveable) g2, g1);
+	}
+	
+	private void clearCollisions(Moveable m, GameObject g){
+		// Signal we are no longer collided
+		GameObject g1 = (GameObject) m;
+		g1.collidedWith.put(g, new Boolean(false));
+		if(g.equals(g1.collidedFromLeft))
+			g1.collidedFromLeft = false;
+		else if(g.equals(g1.collidedFromRight))
+			g1.collidedFromRight = false;
+		else if(g.equals(g1.collidedFromTop))
+			g1.collidedFromTop = false;
+		else if(g.equals(g1.collidedFromBottom))
+			g1.collidedFromBottom = false;
+	
+		// Check for no collisions
+		if(!g1.collidedWith.containsValue(new Boolean(true))){
+			m.setCollided(false);
+			m.setOnFloor(false);
+			g1.collidedFromBottom = false;
+			g1.collidedFromLeft = false;
+			g1.collidedFromRight = false;
+			g1.collidedFromTop = false;
+		}
+	}
+	
 }

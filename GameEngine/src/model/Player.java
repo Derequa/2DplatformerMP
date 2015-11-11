@@ -15,25 +15,18 @@ public class Player extends Box {
 	
 	// IMPORTANT
 	private static final long serialVersionUID = 1L;
-	// Which player am I
-	private int playerNum;
 	// A table for all my key-presses
 	private Hashtable<Character, Boolean> keys = new Hashtable<Character, Boolean>();
 	
 	// The Player constructor requires thought be given to a spawner, movement handler, collider etc and a player number must be given
-	public Player(Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent, int playerNum){
-		super(s, spawner, deSpawner, movementHandler, c, parent);
-		this.playerNum = playerNum;
+	public Player(int guid, Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent){
+		super(guid, s, spawner, deSpawner, movementHandler, c, parent);
 		// A default character values into table (set to false)
 		for(char ch = 0 ; ch < 255 ; ch++)
 			keys.put(new Character(ch), new Boolean(false));
 	}
 	
 	// Getter methods
-	
-	public int getPlayerNum(){
-		return playerNum;
-	}
 	
 	public Hashtable<Character, Boolean> getKeySet(){
 		return keys;

@@ -1,6 +1,10 @@
 package model;
 
 import java.awt.Rectangle;
+import java.util.Hashtable;
+
+import events.DeathEvent;
+import events.SpawnEvent;
 
 /**
  * This class wraps up a few simple data fields and methods
@@ -9,6 +13,8 @@ import java.awt.Rectangle;
  *
  */
 public class Spawn {
+	
+	Hashtable<Integer, GameObject> objects;
 	
 	// The rectangle defining the boundary
 	private Rectangle boundary;
@@ -19,9 +25,10 @@ public class Spawn {
 	 * A spawn is constructed around a rectangle and is set active by default
 	 * @param bounds
 	 */
-	public Spawn(Rectangle bounds){
+	public Spawn(Rectangle bounds, Hashtable<Integer, GameObject> objects){
 		this.boundary = bounds;
 		isActive = true;
+		this.objects = objects;
 	}
 	
 	// Getter methods
@@ -55,5 +62,13 @@ public class Spawn {
 	
 	public void setBounds(Rectangle bounds){
 		this.boundary = bounds;
+	}
+	
+	public void handleSpawnEvent(SpawnEvent e){
+		if(!objects.containsKey(new Integer(e.guid)))
+			return;
+		if(e instanceof DeathEvent)
+			objects.get(new Integer(e.guid)).setVisible(false);
+		objects.get(new Integer(e.guid)).spawn();
 	}
 }

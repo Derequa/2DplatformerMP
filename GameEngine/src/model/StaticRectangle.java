@@ -17,8 +17,8 @@ public class StaticRectangle extends GameObject {
 	private static final long serialVersionUID = -6776604854107270744L;
 
 	// Create a simple Rectangle based game object
-	public StaticRectangle(Rectangle s, PApplet parent) {
-		super(s, parent);
+	public StaticRectangle(int guid, Rectangle s, PApplet parent) {
+		super(guid, s, parent);
 	}
 	
 	@Override

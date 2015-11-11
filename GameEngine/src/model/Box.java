@@ -27,15 +27,15 @@ public class Box extends GameObject implements Moveable{
 	private boolean doICare = false;
 
 	// Create a plain box with no spawn, death-zone, mover, or collier
-	public Box(Rectangle s, PApplet parent) {
-		super(s, parent);
+	public Box(int guid, Rectangle s, PApplet parent) {
+		super(guid, s, parent);
 		super.spawner = null;
 		super.deSpawner = null;
 	}
 	
 	// Create a Box with the given behavior objects
-	public Box(Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent){
-		super(s, spawner, deSpawner, movementHandler, c, parent);
+	public Box(int guid, Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent){
+		super(guid, s, spawner, deSpawner, movementHandler, c, parent);
 	}
 	
 	//Getters

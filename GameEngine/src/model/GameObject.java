@@ -17,6 +17,7 @@ public abstract class GameObject implements Serializable{
 
 	// An important thingy
 	private static final long serialVersionUID = 1916370976096731770L;
+	private Integer guid;
 	// The Java.awt shape associated with this game object
 	private Rectangle javaShape = null;
 	// Where do I spawnn
@@ -37,24 +38,25 @@ public abstract class GameObject implements Serializable{
 	public int oldX;
 	public int oldY;
 	// A table of I am collided with
-	public Hashtable<Rectangle, Boolean> collidedWith = new Hashtable<Rectangle, Boolean>();
+	public Hashtable<GameObject, Boolean> collidedWith = new Hashtable<GameObject, Boolean>();
 	//Booleans for what direction we collided in
 	public boolean collidedFromLeft;
 	public boolean collidedFromRight;
 	public boolean collidedFromTop;
 	public boolean collidedFromBottom;
 	// Rectangle pointers to who collided with us in what direction
-	public Rectangle colliderLeft;
-	public Rectangle colliderRight;
-	public Rectangle colliderTop;
-	public Rectangle colliderBottom;
+	public GameObject colliderLeft;
+	public GameObject colliderRight;
+	public GameObject colliderTop;
+	public GameObject colliderBottom;
 	
 	/**
 	 * This defines a constructor for a game object with a specific rectangle
 	 * @param s The Rectangle to shape us
 	 * @param parent The PApplet in control
 	 */
-	public GameObject(Rectangle s, PApplet parent){
+	public GameObject(int guid, Rectangle s, PApplet parent){
+		this.guid = new Integer(guid);
 		this.javaShape = s;
 		this.parent = parent;
 		oldX = javaShape.x;
@@ -71,8 +73,8 @@ public abstract class GameObject implements Serializable{
 	 * @param c A collision definer
 	 * @param parent The parent of this object
 	 */
-	public GameObject(Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent){
-		this(s, parent);
+	public GameObject(int guid, Rectangle s, Spawn spawner, Spawn deSpawner, Mover movementHandler, Collider c, PApplet parent){
+		this(guid, s, parent);
 		this.spawner = spawner;
 		this.deSpawner = deSpawner;
 		this.movement = movementHandler;
@@ -80,6 +82,10 @@ public abstract class GameObject implements Serializable{
 	}
 	
 	//Getter methods
+	
+	public Integer getGUID(){
+		return guid;
+	}
 	
 	public int posGetX(){
 		return javaShape.x;
@@ -151,9 +157,13 @@ public abstract class GameObject implements Serializable{
 	 */
 	public void move(){
 		if(this.isMoveable()){
-			this.movement.update((Moveable) this);
+			if(this instanceof Moveable){
+				this.movement.update((Moveable) this);
+			}
+			else if(this instanceof MovingPlatform){
+				this.movement.update((MovingPlatform) this); 
+			}
 		}
-		else throw new IllegalArgumentException("Object is not moveable");
 	}
 	
 	/**
@@ -172,6 +182,7 @@ public abstract class GameObject implements Serializable{
 		if(isSpawnable() && spawner.isActive()){
 			javaShape.x = this.spawner.getX();
 			javaShape.y = this.spawner.getY();
+			this.visible = true;
 			if(isMoveable()){
 				Moveable m = (Moveable) this;
 				// Reset velocity for Player objects
@@ -190,5 +201,12 @@ public abstract class GameObject implements Serializable{
 	public boolean inDeathZone(){
 		if(!isKillable()) return false;
 		return javaShape.intersects(deSpawner.getBounds());
+	}
+	
+	@Override
+	public boolean equals(Object o){
+		if(o instanceof GameObject)
+			return ((GameObject) o).getGUID().equals(getGUID());
+		else return false;
 	}
 }
