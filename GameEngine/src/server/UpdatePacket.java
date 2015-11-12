@@ -7,10 +7,11 @@ import java.io.Serializable;
  * @author Derek Batts
  *
  */
-public class UpdatePacket implements Serializable {
+public class UpdatePacket implements Serializable, Comparable<UpdatePacket> {
 
 	// VERY IMPORTANT
 	private static final long serialVersionUID = -4278372982831805939L;
+	public int timestamp;
 	// How many rectangles are there?
 	public int numRects;
 	// A 2D array for each rectangle's x, y, width, and height
@@ -19,9 +20,15 @@ public class UpdatePacket implements Serializable {
 	public int[][] rectColors;
 
 	// The constructor initializes the arrays
-	public UpdatePacket(int numRects){
+	public UpdatePacket(int numRects, int timestamp){
 		this.numRects = numRects;
+		this.timestamp = timestamp;
 		rectVals = new int[numRects][4];
 		rectColors = new int[numRects][3];
+	}
+
+	@Override
+	public int compareTo(UpdatePacket o) {
+		return (new Integer(timestamp)).compareTo(new Integer(o.timestamp));
 	}
 }

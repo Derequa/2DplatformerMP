@@ -289,7 +289,7 @@ public class GameManager extends PApplet {
 		for(GameObject g : objects.values())
 			if(g.visible())
 				size++;
-		UpdatePacket update = new UpdatePacket(size);
+		UpdatePacket update = new UpdatePacket(size, globalTime.getTime());
 		
 		int i = 0;
 		for(GameObject g : objects.values()){

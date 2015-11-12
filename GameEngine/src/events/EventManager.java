@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
+import client.Client;
 import model.*;
 import server.GameManager;
 
@@ -20,7 +21,7 @@ public class EventManager {
 	PriorityQueue<Event>[] eventQueues = new PriorityQueue[4];
 	
 	LinkedList<Collider> colliderListeners = new LinkedList<Collider>();
-	//list of replay listeners
+	LinkedList<Client> replayers = new LinkedList<Client>();
 	LinkedList<Mover> movementListeners = new LinkedList<Mover>();
 	LinkedList<Spawn> spawnListeners = new LinkedList<Spawn>();
 	LinkedList<Spawn> deathListeners = new LinkedList<Spawn>();
@@ -33,14 +34,21 @@ public class EventManager {
 			eventQueues[i] = new PriorityQueue<Event>();
 	}
 	
+	public int numEvents(){
+		int size = 0;
+		for(int i = 0 ; i < 4 ; i++)
+			size += eventQueues[i].size();
+		return size;
+	}
+	
 	// Event registration
 	
 	public void registerCollisionEvents(Collider c){
 		colliderListeners.add(c);
 	}
 	
-	public void registerReplayEvents(/*REPLAY SYSTEM*/){
-		
+	public void registerReplayEvents(Client client){
+		replayers.add(client);
 	}
 	
 	public void registerMovementEvent(Mover m){
@@ -155,8 +163,30 @@ public class EventManager {
 					for(HumanIO h : inputListeners)
 						h.handleHIDEvent((HIDEvent) e);
 				}
+				else if(e instanceof PlayPauseReplayEvent){
+					// Handle replay restart
+					for(Client c : replayers)
+						c.handlePlayPauseReplayEvent((PlayPauseReplayEvent) e);
+				}
+				else if(e instanceof RestartReplayEvent){
+					// Handle replay restart
+					for(Client c : replayers)
+						c.handleReplayRestartEvent((RestartReplayEvent) e);
+				}
+				else if(e instanceof ReplaySpeedChangeEvent){
+					// Handle replay speed change
+					for(Client c : replayers)
+						c.handleReplaySpeedChangeEvent((ReplaySpeedChangeEvent) e);
+				}
+				else if(e instanceof StopReplayEvent){
+					// Handle replay recording stop
+					for(Client c : replayers)
+						c.handleStopReplayEvent((StopReplayEvent) e);
+				}
 				else if(e instanceof ReplayEvent){
-					// VAUGE STUFFS
+					// Handle replay recording start
+					for(Client c : replayers)
+						c.handleReplayEvent((ReplayEvent) e);
 				}
 				else if(e instanceof NewPlayerEvent){
 					// Handle new player

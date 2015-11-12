@@ -70,9 +70,7 @@ public class Server implements Runnable{
 						packet = null;
 						packetLock.release();
 					}
-					
-					output.writeObject(new String("time"));
-					output.writeInt(GameManager.globalTime.getTime());
+
 					output.writeObject(new String("done"));
 				}
 				else if(command.equals("input")){

@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.concurrent.Semaphore;
 
 import processing.core.PApplet;
@@ -40,8 +41,16 @@ public class Client extends PApplet {
 	private static ObjectInputStream input;
 	
 	public Semaphore inputLock = new Semaphore(1);
-	public static TimeLine globalTime = new TimeLine(0, 2, Integer.MAX_VALUE);
-
+	public TimeLine globalTime = new TimeLine(0, 2, Integer.MAX_VALUE);
+	public EventManager eventManager = new EventManager();
+	
+	public static PriorityQueue<UpdatePacket> replayQueue = new PriorityQueue<UpdatePacket>();
+	public static TimeLine replayTimeLine;
+	public boolean recordingReplay = false;
+	public int replayStart;
+	public int replayEnd;
+	public static ReplayViewer replayViewer;
+	ClientManager parent;
 	
 	/**
 	 * This method sets up our sketch
@@ -50,6 +59,7 @@ public class Client extends PApplet {
 		//Set size
 		size(WIDTH, HEIGHT);
 		
+		parent = new ClientManager(this);
 		// Connect to server
 		try {
 			mySocket = new Socket("127.0.0.1", portNum);
@@ -63,6 +73,7 @@ public class Client extends PApplet {
 			e.printStackTrace();
 			System.exit(1);
 		}
+		eventManager.registerReplayEvents(this);
 	}
 	
 	/**
@@ -81,22 +92,22 @@ public class Client extends PApplet {
 			for(String state = (String) input.readObject() ; !state.equals("done") ; state = (String) input.readObject()){
 				if(state.equals("shapes"))
 					u = (UpdatePacket) input.readObject();
-				else if(state.equals("time")){
-					int serverTime = input.readInt();
-					if(serverTime != globalTime.getTime())
-						globalTime.changeTime(serverTime);
-				}
 			}
 		} catch (Exception e){
 			e.printStackTrace();
 		}
 		if(u != null){
+			if(globalTime.getTime() != u.timestamp)
+				globalTime.changeTime(u.timestamp);
 			for(int i = 0 ; i < u.numRects ; i++){
 				fill(color(u.rectColors[i][0], u.rectColors[i][1], u.rectColors[i][2]));
 				rect((float) u.rectVals[i][0], (float) u.rectVals[i][1], (float) u.rectVals[i][2], (float) u.rectVals[i][3]);
 			}
+			if(recordingReplay)
+				replayQueue.add(u);
 		}
-		
+		eventManager.handleAllEvents();
+		parent.setButtons();
 		inputLock.release();
 		
 	}
@@ -137,6 +148,80 @@ public class Client extends PApplet {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	public void handleReplayEvent(ReplayEvent e){
+		if(!recordingReplay){
+			replayQueue.clear();
+			recordingReplay = true;
+			replayStart = globalTime.getTime();
+			if(replayViewer != null){
+				try {
+					replayViewer.lock.acquire();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+				replayViewer.frameQueue.clear();
+				replayViewer.timeline.changeTic(TimeLine.STOP);
+				replayViewer.lock.release();
+			}
+		}
+	}
+	
+	public void handleStopReplayEvent(StopReplayEvent e){
+		if(recordingReplay){
+			recordingReplay = false;
+			replayEnd = globalTime.getTime();
+			replayTimeLine = new TimeLine(replayStart, TimeLine.DEFAULT, replayEnd);
+			if((replayViewer == null))
+				PApplet.main("client.ReplayViewer");
+			else{
+				try {
+					replayViewer.lock.acquire();
+					replayViewer.timeline = new TimeLine(replayStart, TimeLine.DEFAULT, replayEnd);
+					replayViewer.frameQueue = replayQueue;
+					replayViewer.lock.release();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	public void handleReplaySpeedChangeEvent(ReplaySpeedChangeEvent e){
+		if(!recordingReplay && (replayViewer != null)){
+			try {
+				replayViewer.lock.acquire();
+				replayViewer.timeline.changeTic(e.newSpeed);
+				replayViewer.lock.release();
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+	
+	public void handleReplayRestartEvent(RestartReplayEvent e){
+		if(!recordingReplay && (replayViewer != null)){
+			try {
+				replayViewer.lock.acquire();
+				replayViewer.timeline.restart();;
+				replayViewer.lock.release();
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+	
+	public void handlePlayPauseReplayEvent(PlayPauseReplayEvent e){
+		if(!recordingReplay && (replayViewer != null)){
+			try {
+				replayViewer.lock.acquire();
+				replayViewer.playing = e.play;
+				replayViewer.lock.release();
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
 		}
 	}
 }
