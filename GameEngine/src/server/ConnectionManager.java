@@ -1,9 +1,13 @@
 package server;
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Hashtable;
+
+import events.NewPlayerEvent;
+import model.Player;
 
 /**
  * This class runs in its own thread, and its sole purpose is to make new
@@ -45,7 +49,18 @@ public class ConnectionManager implements Runnable{
 				// Add the worker number as being used
 				workerNums.put(new Integer(num), new Boolean(true));
 				// Make a new Server thread
-				Server newServer = new Server(newSocket, num, workerNums, gm.createPlayer());
+				
+				GameManager.stateLock.acquire();
+				// Make new player
+				int newPlayerGuid = GameManager.guidMaker++;
+				NewPlayerEvent e = new NewPlayerEvent(GameManager.globalTime.getTime(), 0, newPlayerGuid);
+				// Make associated event
+				GameManager.eventManager.raiseNewPlayerEvent(e);
+				// Send all objects
+				GameManager.stateLock.release();
+				
+				
+				Server newServer = new Server(newSocket, num, workerNums, newPlayerGuid);
 				Thread newThread = new Thread(newServer);
 				// Add the thread to the list of threads
 				GameManager.servers.add(newServer);

@@ -13,7 +13,7 @@ import processing.core.*;
  * @author Derek
  *
  */
-public abstract class GameObject implements Serializable{
+public abstract class GameObject implements Serializable {
 
 	// An important thingy
 	private static final long serialVersionUID = 1916370976096731770L;
@@ -29,7 +29,7 @@ public abstract class GameObject implements Serializable{
 	// What happens when I hit stuff
 	protected Collider collisionDetecter;
 	// Who my daddy
-	protected PApplet parent;
+	public transient PApplet parent;
 	// Am I visible
 	private boolean visible = false;
 	// An array of ints for RGB color

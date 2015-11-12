@@ -1,5 +1,6 @@
 package model;
 
+import java.io.Serializable;
 import java.util.Hashtable;
 
 import events.MovementEvent;
@@ -9,8 +10,9 @@ import events.MovementEvent;
  * @author Derek
  *
  */
-public class Mover {
+public class Mover implements Serializable {
 	
+	private static final long serialVersionUID = 7973530547190934079L;
 	Hashtable<Integer, GameObject> objects = null;
 	
 	public Mover(Hashtable<Integer, GameObject> objects){

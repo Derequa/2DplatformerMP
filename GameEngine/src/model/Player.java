@@ -14,7 +14,7 @@ import processing.core.PApplet;
 public class Player extends Box {
 	
 	// IMPORTANT
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = -8318346628289017780L;
 	// A table for all my key-presses
 	private Hashtable<Character, Boolean> keys = new Hashtable<Character, Boolean>();
 	

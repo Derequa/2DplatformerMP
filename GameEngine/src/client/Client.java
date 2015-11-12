@@ -1,14 +1,22 @@
 package client;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Hashtable;
+import java.util.LinkedList;
+import java.util.concurrent.Semaphore;
 
 import processing.core.PApplet;
 import processing.event.KeyEvent;
+import model.*;
+import events.*;
+import server.GameStatePacket;
 import server.UpdatePacket;
+import time.TimeLine;
 
 /**
  * This class implements the client side of our game
@@ -30,6 +38,9 @@ public class Client extends PApplet {
 	private static Socket mySocket;
 	private static ObjectOutputStream output;
 	private static ObjectInputStream input;
+	
+	public Semaphore inputLock = new Semaphore(1);
+	public static TimeLine globalTime = new TimeLine(0, 2, Integer.MAX_VALUE);
 
 	
 	/**
@@ -44,10 +55,13 @@ public class Client extends PApplet {
 			mySocket = new Socket("127.0.0.1", portNum);
 			output = new ObjectOutputStream(mySocket.getOutputStream());
 			input = new ObjectInputStream(mySocket.getInputStream());
+			
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
+			System.exit(1);
 		} catch (IOException e) {
 			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 	
@@ -57,37 +71,34 @@ public class Client extends PApplet {
 	public void draw(){
 		// Set background
 		background(25);
+		UpdatePacket u = null;
 		
-		// Initialize a new UpdatePacket
-		UpdatePacket p = null;
-		try {
-			//Try to read in the packet
-			p = (UpdatePacket) input.readObject();
-		} catch (ClassNotFoundException | IOException e) {
+		try{
+			inputLock.acquire();
+			globalTime.step();
+			output.writeObject(new String("ready"));
+			
+			for(String state = (String) input.readObject() ; !state.equals("done") ; state = (String) input.readObject()){
+				if(state.equals("shapes"))
+					u = (UpdatePacket) input.readObject();
+				else if(state.equals("time")){
+					int serverTime = input.readInt();
+					if(serverTime != globalTime.getTime())
+						globalTime.changeTime(serverTime);
+				}
+			}
+		} catch (Exception e){
 			e.printStackTrace();
 		}
-		// Check for null
-		if(p == null)
-			throw new NullPointerException("Update Packet was null");
-		
-		// Draw each rectangle in the packet
-		for(int i = 0 ; i < p.numRects ; i++){
-			int r = p.rectColors[i][0];
-			int g = p.rectColors[i][1];
-			int b = p.rectColors[i][2];
-			
-			// Set the color
-			fill(color(r, g, b));
-			
-			int x = p.rectVals[i][0];
-			int y = p.rectVals[i][1];
-			int w = p.rectVals[i][2];
-			int h = p.rectVals[i][3];
-			
-			// Draw the rectangle
-			rect((float) x, (float) y, (float) w, (float) h);
-			
+		if(u != null){
+			for(int i = 0 ; i < u.numRects ; i++){
+				fill(color(u.rectColors[i][0], u.rectColors[i][1], u.rectColors[i][2]));
+				rect((float) u.rectVals[i][0], (float) u.rectVals[i][1], (float) u.rectVals[i][2], (float) u.rectVals[i][3]);
+			}
 		}
+		
+		inputLock.release();
+		
 	}
 	
 	@Override
@@ -97,9 +108,14 @@ public class Client extends PApplet {
 	public void keyPressed(KeyEvent k){
 		// Try to send the key press
 		try {
-			output.writeObject(new Boolean(true));
-			output.writeObject(new Character(k.getKey()));
+			inputLock.acquire();
+			output.writeObject(new String("input"));
+			output.writeChar(k.getKey());
+			output.writeBoolean(true);
+			inputLock.release();
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 		
@@ -112,9 +128,14 @@ public class Client extends PApplet {
 	public void keyReleased(KeyEvent k){
 		// Try to send the key release
 		try {
-			output.writeObject(new Boolean(false));
-			output.writeObject(new Character(k.getKey()));
+			inputLock.acquire();
+			output.writeObject(new String("input"));
+			output.writeChar(k.getKey());
+			output.writeBoolean(false);
+			inputLock.release();
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 	}

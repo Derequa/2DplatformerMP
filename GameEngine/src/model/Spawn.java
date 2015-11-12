@@ -1,6 +1,7 @@
 package model;
 
 import java.awt.Rectangle;
+import java.io.Serializable;
 import java.util.Hashtable;
 
 import events.DeathEvent;
@@ -12,8 +13,10 @@ import events.SpawnEvent;
  * @author Derek Batts
  *
  */
-public class Spawn {
+public class Spawn implements Serializable{
 	
+	private static final long serialVersionUID = 2479661271009259133L;
+
 	Hashtable<Integer, GameObject> objects;
 	
 	// The rectangle defining the boundary

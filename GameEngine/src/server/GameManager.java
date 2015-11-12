@@ -1,16 +1,10 @@
 package server;
 
 import java.awt.Rectangle;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 
@@ -39,26 +33,28 @@ public class GameManager extends PApplet {
 	// A table mapping players to the server thread/client controlling them
 	protected static Hashtable<Player, Server> playerServerMap = new Hashtable<Player, Server>();
 	// A thread to listen for incoming connections
-	//protected ConnectionManager listener = new ConnectionManager(this);
-	//private Thread listenerThread = new Thread(listener);
+	protected ConnectionManager listener = new ConnectionManager(this);
+	private Thread listenerThread = new Thread(listener);
 	
 	// A random object for general use
 	private static Random rand = new Random();
 	// A semaphore to lock the list of players
-	public static Semaphore playersLock = new Semaphore(1);
+	public static Semaphore stateLock = new Semaphore(1);
 	
 	public static EventManager eventManager = new EventManager();
+	
+	public static LinkedList<Event> sendableEvents = new LinkedList<Event>();
 	
 	public static final boolean debug = true;
 	public Player p1 = null;
 	
-	private static Hashtable<Integer, GameObject> objects = new Hashtable<Integer, GameObject>();
+	public static Hashtable<Integer, GameObject> objects = new Hashtable<Integer, GameObject>();
 	
 	// A spawn for players (and boxes)
 	protected static Spawn playerSpawn;
 	// A death zone for players
 	protected static Spawn playerDeathZone;
-	protected MovingPlatform death = null;
+	protected static MovingPlatform death = null;
 	// A collision detector
 	protected static Collider collisionDetector = new Collider(objects);
 	// A motion updater
@@ -71,8 +67,9 @@ public class GameManager extends PApplet {
 	private static final int HEIGHT = 500;
 	
 	// Object marker
-	private static int guidMaker = 0;
+	public static int guidMaker = 0;
 	// A place to print (deprecated)
+	@Deprecated
 	protected static OutputStream console = System.out;
 	// A rectangle defining the window
 	StaticRectangle window;
@@ -82,7 +79,13 @@ public class GameManager extends PApplet {
 	 */
 	public void setup(){
 		// Start listening for new connections
-		//listenerThread.start();
+		listenerThread.start();
+		
+		try {
+			stateLock.acquire();
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
 		
 		// Create spawn and death zones
 		Rectangle spawnBounds = new Rectangle(2, 30, 30, 30);
@@ -96,6 +99,8 @@ public class GameManager extends PApplet {
 		eventManager.registerSpawnEvent(playerSpawn);
 		eventManager.registerMovementEvent(motionUpdater);
 		eventManager.registerHIDEvent(hidHandler);
+		eventManager.registerNewPlayerEvent(this);
+		eventManager.registerPlayerQuitEvent(this);
 		
 		// Create all the Boxes
 		for(int i = 0 ; i < 4 ; i++){
@@ -143,11 +148,13 @@ public class GameManager extends PApplet {
 		}
 		
 		if(debug){
-			p1 = createPlayer();
+			p1 = createPlayer(guidMaker++);
 			objects.put(p1.getGUID(), p1);
 		}
 		
-		size(WIDTH, HEIGHT);		
+		stateLock.release();
+		
+		size(WIDTH, HEIGHT);
 	}
 	
 	/**
@@ -157,7 +164,14 @@ public class GameManager extends PApplet {
 		//Set the background
 		background(25);
 		
-		//Hashtable<GameObject, LinkedList<GameObject>> collisions = new Hashtable<GameObject, LinkedList<GameObject>>();
+		try {
+			stateLock.acquire();
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+		// Step the global time up
+		globalTime.step();
+		sendableEvents.clear();
 		for(GameObject g : objects.values()){
 			// Handle input
 			if(g instanceof Player)
@@ -168,6 +182,7 @@ public class GameManager extends PApplet {
 			if(!collisionDetector.collides(g, window)){
 				SpawnEvent e = new SpawnEvent(globalTime.getTime(), 2, g.getGUID().intValue());
 				eventManager.raiseSpawnEvent(e);
+				sendableEvents.add(e);
 			}
 			// Detect collisions
 			for(GameObject g2 : objects.values()){
@@ -183,38 +198,50 @@ public class GameManager extends PApplet {
 						
 						DeathEvent e = new DeathEvent(globalTime.getTime(), 1, p.getGUID());
 						eventManager.raiseDeathEvent(e);
+						sendableEvents.add(e);
 					}
 					else {
 						CollisionEvent c = new CollisionEvent(globalTime.getTime(), 2, g.getGUID(), g2.getGUID().intValue());
 						eventManager.raiseCollisionEvent(c);
+						sendableEvents.add(c);
 					}
 				}
 				else
 					collisionDetector.handleNoCollide(g, g2);
 			}
 		}
-		eventManager.handleEvents();
-		
-		for(GameObject g : objects.values())
-			g.draw();
 		
 		// Send Events
+		UpdatePacket u = makePacket();
+		for(Server s : servers){
+			try {
+				s.packetLock.acquire();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			s.packet = u;
+			s.packetLock.release();
+			s.otherPacketLock.release();
+			
+		}
+		
 		// Handle Events
+		eventManager.handleAllEvents();
+		
+		stateLock.release();
 		
 		// Draw each
-		
-		// Step the global time up
-		globalTime.step();
-		
+		for(GameObject g : objects.values())
+			g.draw();
 	}
 	
 	/**
 	 * This method creates and returns a new player in the game
 	 * @return the player created
 	 */
-	public Player createPlayer(){
+	public Player createPlayer(int guid){
 		// Make the player
-		Player p = new Player(guidMaker++, new Rectangle(45, 45), playerSpawn, playerDeathZone, motionUpdater, collisionDetector, this);
+		Player p = new Player(guid, new Rectangle(45, 45), playerSpawn, playerDeathZone, motionUpdater, collisionDetector, this);
 		// Set fields
 		p.aSetY(Moveable.GRAVITY);
 		p.setVisible(true);
@@ -229,17 +256,16 @@ public class GameManager extends PApplet {
 		p.setColor(r, g, b);
 		p.spawn();
 		
-		// Lock the list
-		try {
-			playersLock.acquire();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		// Add the new player and unlock
-		objects.put(p.getGUID(), p);
-		playersLock.release();
-		
 		return p;
+	}
+	
+	public void handleNewPlayer(NewPlayerEvent e){
+		Player p = createPlayer(e.guid);
+		objects.put(p.getGUID(), p);
+	}
+	
+	public void handlePlayerQuit(PlayerQuitEvent e){
+		objects.remove(new Integer(e.guid));
 	}
 	
 	@Override
@@ -256,5 +282,28 @@ public class GameManager extends PApplet {
 			HIDEvent e = new HIDEvent(globalTime.getTime(), 0, k.getKey(), false, p1.getGUID().intValue());
 			eventManager.raiseHIDEvent(e);
 		}
+	}
+	
+	private UpdatePacket makePacket(){
+		int size = 0;
+		for(GameObject g : objects.values())
+			if(g.visible())
+				size++;
+		UpdatePacket update = new UpdatePacket(size);
+		
+		int i = 0;
+		for(GameObject g : objects.values()){
+			if(g.visible()){
+				for(int j = 0 ; j < 3 ; j++)
+					update.rectColors[i][j] =  g.getColor()[j];;
+				Rectangle r = g.getShape();
+				update.rectVals[i][0] = r.x;
+				update.rectVals[i][1] = r.y;
+				update.rectVals[i][2] = r.width;
+				update.rectVals[i][3] = r.height;
+				i++;
+			}
+		}
+		return update;
 	}
 }

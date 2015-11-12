@@ -2,6 +2,7 @@ package events;
 
 public class CollisionEvent extends Event {
 	
+	private static final long serialVersionUID = -8289416432572582366L;
 	public int guid1;
 	public int guid2;
 

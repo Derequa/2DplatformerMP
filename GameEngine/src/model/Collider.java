@@ -1,5 +1,6 @@
 package model;
 
+import java.io.Serializable;
 import java.util.Hashtable;
 
 import events.CollisionEvent;
@@ -9,8 +10,9 @@ import events.CollisionEvent;
  * @author Derek Batts
  *
  */
-public class Collider {
+public class Collider implements Serializable{
 	
+	private static final long serialVersionUID = 8617237478201678739L;
 	Hashtable<Integer, GameObject> objects = null;
 	
 	public Collider(Hashtable<Integer, GameObject> objects){
@@ -129,7 +131,9 @@ public class Collider {
 	}
 	
 	public void handleCollisionEvent(CollisionEvent e){
-		if(objects.containsKey(new Integer(e.guid1)) && objects.containsKey(new Integer(e.guid2)))
+		Integer guid1 = new Integer(e.guid1);
+		Integer guid2 = new Integer(e.guid2);
+		if(objects.containsKey(guid1) && objects.containsKey(guid2))
 			collide(objects.get(new Integer(e.guid1)), objects.get(new Integer(e.guid2)));
 		
 	}
