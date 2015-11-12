@@ -40,14 +40,13 @@ public class GameManager extends PApplet {
 	private static Random rand = new Random();
 	// A semaphore to lock the list of players
 	public static Semaphore stateLock = new Semaphore(1);
-	
+	// The event manager for the server
 	public static EventManager eventManager = new EventManager();
-	
-	public static LinkedList<Event> sendableEvents = new LinkedList<Event>();
-	
-	public static final boolean debug = true;
+	// A debugging flag
+	public static final boolean debug = false;
+	// Player 1 for playign on the server in debug mode
 	public Player p1 = null;
-	
+	// A table of all our objects and their GUIDs
 	public static Hashtable<Integer, GameObject> objects = new Hashtable<Integer, GameObject>();
 	
 	// A spawn for players (and boxes)
@@ -59,7 +58,7 @@ public class GameManager extends PApplet {
 	protected static Collider collisionDetector = new Collider(objects);
 	// A motion updater
 	protected static Mover motionUpdater = new Mover(objects);
-	
+	// A handler "system" for player input
 	protected static HumanIO hidHandler = new HumanIO(objects);
 	
 	// Window size stuff
@@ -81,6 +80,7 @@ public class GameManager extends PApplet {
 		// Start listening for new connections
 		listenerThread.start();
 		
+		// Lock the state in startup
 		try {
 			stateLock.acquire();
 		} catch (InterruptedException e1) {
@@ -92,8 +92,10 @@ public class GameManager extends PApplet {
 		Rectangle despawnBounds = new Rectangle(15, 260, 70, 20);
 		playerSpawn = new Spawn(spawnBounds, objects);
 		playerDeathZone = new Spawn(despawnBounds, objects);
+		// Setup the window object
 		window = new StaticRectangle(guidMaker++, new Rectangle(0, 0, WIDTH, HEIGHT), this);
 		
+		// Register systems with the event manager
 		eventManager.registerCollisionEvents(collisionDetector);
 		eventManager.registerDeathEvent(playerDeathZone);
 		eventManager.registerSpawnEvent(playerSpawn);
@@ -108,7 +110,9 @@ public class GameManager extends PApplet {
 			Box b = new Box(guidMaker++, box, playerSpawn, playerDeathZone, motionUpdater, collisionDetector, this);
 			b.setColor(255, 255, 255);
 			b.setVisible(true);
-			b.vSet(rand.nextInt(4),rand.nextInt(4));
+			b.vSet(rand.nextInt(3) + 1,rand.nextInt(3) + 1);
+			b.posSet(rand.nextInt(200) + 95, rand.nextInt(140));
+			// Add each box to the objects table
 			objects.put(b.getGUID(), b);
 		}
 		
@@ -117,6 +121,7 @@ public class GameManager extends PApplet {
 									new StaticRectangle(guidMaker++, new Rectangle(0, HEIGHT, WIDTH, 1), this),
 									new StaticRectangle(guidMaker++, new Rectangle(WIDTH, 0, 1, HEIGHT), this),
 									new StaticRectangle(guidMaker++, new Rectangle(0, 0, 1, HEIGHT), this)};
+		// Add walls to the table of objects
 		for(int i = 0 ; i < 4 ; i++)
 			objects.put(walls[i].getGUID(), walls[i]);
 		
@@ -129,6 +134,7 @@ public class GameManager extends PApplet {
 		platform2.setColor(255, 255, 255);
 		platform2.setVisible(true);
 		objects.put(platform2.getGUID(), platform2);
+		
 		// Create a special platform for murder
 		death = new MovingPlatform(guidMaker++, new Rectangle(15, 270, 70, 20), this, motionUpdater, playerDeathZone);
 		death.xMin = 15;
@@ -140,18 +146,13 @@ public class GameManager extends PApplet {
 		death.setVisible(true);
 		objects.put(death.getGUID(), death);
 		
-		for(GameObject g : objects.values()){
-			if(g.isSpawnable()){
-				SpawnEvent e = new SpawnEvent(globalTime.getTime(), 1, g.getGUID().intValue());
-				eventManager.raiseSpawnEvent(e);
-			}
-		}
-		
+		// Make a player in debug mode
 		if(debug){
 			p1 = createPlayer(guidMaker++);
 			objects.put(p1.getGUID(), p1);
 		}
 		
+		// Unlock the state
 		stateLock.release();
 		
 		size(WIDTH, HEIGHT);
@@ -164,14 +165,15 @@ public class GameManager extends PApplet {
 		//Set the background
 		background(25);
 		
+		// Lock the server state
 		try {
 			stateLock.acquire();
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
+		
 		// Step the global time up
 		globalTime.step();
-		sendableEvents.clear();
 		for(GameObject g : objects.values()){
 			// Handle input
 			if(g instanceof Player)
@@ -179,16 +181,21 @@ public class GameManager extends PApplet {
 			
 			// Move and update
 			g.move();
+			
+			// Re-spawn if out of bounds
 			if(!collisionDetector.collides(g, window)){
 				SpawnEvent e = new SpawnEvent(globalTime.getTime(), 2, g.getGUID().intValue());
 				eventManager.raiseSpawnEvent(e);
-				sendableEvents.add(e);
 			}
-			// Detect collisions
+			
+			// Check collisions with every other object
 			for(GameObject g2 : objects.values()){
+				// Skip ourself
 				if(g.equals(g2))
 					continue;
+				// Detect collisions
 				if(collisionDetector.collides(g, g2)){
+					// Check if a player collided with the death zone
 					if(((g instanceof Player) && (g2.equals(death))) || ((g2 instanceof Player) && (g.equals(death)))){
 						Player p = null;
 						if(g instanceof Player)
@@ -196,38 +203,37 @@ public class GameManager extends PApplet {
 						else
 							p = (Player) g2;
 						
+						// Raise a death event if a player gon' die
 						DeathEvent e = new DeathEvent(globalTime.getTime(), 1, p.getGUID());
 						eventManager.raiseDeathEvent(e);
-						sendableEvents.add(e);
 					}
+					// Otherwise raise a collision event
 					else {
 						CollisionEvent c = new CollisionEvent(globalTime.getTime(), 2, g.getGUID(), g2.getGUID().intValue());
 						eventManager.raiseCollisionEvent(c);
-						sendableEvents.add(c);
 					}
 				}
+				// If we didn't collide remember that we didn't
 				else
 					collisionDetector.handleNoCollide(g, g2);
 			}
 		}
 		
-		// Send Events
+		// Send the world state
 		UpdatePacket u = makePacket();
 		for(Server s : servers){
-			try {
-				s.packetLock.acquire();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			// Synchronize of each server's lock
+			synchronized(s.waitingThing){
+				// Set packet and notify
+				s.packet = u;
+				s.waitingThing.notify();
 			}
-			s.packet = u;
-			s.packetLock.release();
-			s.otherPacketLock.release();
-			
 		}
 		
 		// Handle Events
 		eventManager.handleAllEvents();
 		
+		// Unlock the server state
 		stateLock.release();
 		
 		// Draw each
@@ -259,38 +265,61 @@ public class GameManager extends PApplet {
 		return p;
 	}
 	
+	/**
+	 * This method handles a new player connecting to the server.
+	 * @param e The event describing the new player.
+	 */
 	public void handleNewPlayer(NewPlayerEvent e){
 		Player p = createPlayer(e.guid);
 		objects.put(p.getGUID(), p);
 	}
 	
+	/**
+	 * This method handles a player leaving the server.
+	 * @param e The event describing the quiter.
+	 */
 	public void handlePlayerQuit(PlayerQuitEvent e){
 		objects.remove(new Integer(e.guid));
 	}
 	
+	/**
+	 * This method responds to keyboard input on the server.
+	 */
 	@Override
 	public void keyPressed(KeyEvent k){
+		// Raise an event about the key press if we are in debug mode
 		if(debug){
 			HIDEvent e = new HIDEvent(globalTime.getTime(), 0, k.getKey(), true, p1.getGUID().intValue());
 			eventManager.raiseHIDEvent(e);
 		}
 	}
 	
+	/**
+	 * This method responds to keyboard input on the server.
+	 */
 	@Override
 	public void keyReleased(KeyEvent k){
+		// Raise an event about the key release if we are in debug mode
 		if(debug){
 			HIDEvent e = new HIDEvent(globalTime.getTime(), 0, k.getKey(), false, p1.getGUID().intValue());
 			eventManager.raiseHIDEvent(e);
 		}
 	}
 	
+	/**
+	 * This method makes a packet to send to the clients based on the game state.
+	 * @return The packet summarizing the game state.
+	 */
 	private UpdatePacket makePacket(){
+		// Count the number of visible objects
 		int size = 0;
 		for(GameObject g : objects.values())
 			if(g.visible())
 				size++;
+		// Prepare a packet
 		UpdatePacket update = new UpdatePacket(size, globalTime.getTime());
 		
+		// Store x, y, width, height, and color data for each visible object
 		int i = 0;
 		for(GameObject g : objects.values()){
 			if(g.visible()){

@@ -4,22 +4,31 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
-import java.util.Queue;
-
 import client.Client;
 import model.*;
 import server.GameManager;
 
+/**
+ * This class implements a manager for a system of events.
+ * It afford registration of specific game engine systems as listeners
+ * for specific events.
+ * It manages handling by priority on a given time-step.
+ * @author Derek Batts
+ *
+ */
 public class EventManager {
 	
+	// Priority constants
 	public static final int HIGHEST = 0;
 	public static final int HIGH = 1;
 	public static final int LOW = 2;
 	public static final int LOWEST = 3;
 	
+	// Make an array of queues for managing priority
 	@SuppressWarnings("unchecked")
 	PriorityQueue<Event>[] eventQueues = new PriorityQueue[4];
 	
+	// Lists of listeners
 	LinkedList<Collider> colliderListeners = new LinkedList<Collider>();
 	LinkedList<Client> replayers = new LinkedList<Client>();
 	LinkedList<Mover> movementListeners = new LinkedList<Mover>();
@@ -29,11 +38,18 @@ public class EventManager {
 	LinkedList<GameManager> newPlayerHandlers = new LinkedList<GameManager>();
 	LinkedList<GameManager> playerQuitHandlers = new LinkedList<GameManager>();
 	
+	/**
+	 * This constructs an event manager and builds its queues
+	 */
 	public EventManager(){
 		for(int i = 0 ; i < eventQueues.length ; i++)
 			eventQueues[i] = new PriorityQueue<Event>();
 	}
 	
+	/**
+	 * This determines the number of events waiting to be handled.
+	 * @return The number of events waiting to be handled.
+	 */
 	public int numEvents(){
 		int size = 0;
 		for(int i = 0 ; i < 4 ; i++)
@@ -115,6 +131,10 @@ public class EventManager {
 		
 	}
 	
+	/**
+	 * This method adds a generic event to its appropriate queue.
+	 * @param e The event to add.
+	 */
 	private void addEvent(Event e){
 		if(e.priority <= HIGHEST)
 			eventQueues[HIGHEST].add(e);
@@ -128,12 +148,21 @@ public class EventManager {
 	
 	// Event handling
 	
+	/**
+	 * This handles all the current events.
+	 */
 	public void handleAllEvents(){
 		handleEventsAtOrBefore(Integer.MAX_VALUE);
 	}
 	
+	/**
+	 * This handles all the events at or before the given time.
+	 * @param time The time to handle events at/before.
+	 */
 	public void handleEventsAtOrBefore(int time){
+		// Loop through each queue, highest priority first
 		for(int i = 0 ; i < eventQueues.length ; i++){
+			// Loop through the queue handling each event and removing it
 			for(Iterator<Event> iterator = eventQueues[i].iterator(); iterator.hasNext() ; iterator.remove()){
 				Event e = iterator.next();
 				if(e.timestamp.compareTo(new Integer(time)) > 0)

@@ -11,6 +11,7 @@ public class UpdatePacket implements Serializable, Comparable<UpdatePacket> {
 
 	// VERY IMPORTANT
 	private static final long serialVersionUID = -4278372982831805939L;
+	// Server time when this packet was made and sent
 	public int timestamp;
 	// How many rectangles are there?
 	public int numRects;

@@ -26,7 +26,8 @@ public class Spawn implements Serializable{
 	
 	/**
 	 * A spawn is constructed around a rectangle and is set active by default
-	 * @param bounds
+	 * @param bounds The Rectangle that defines us.
+	 * @param objects The master table of game objects.
 	 */
 	public Spawn(Rectangle bounds, Hashtable<Integer, GameObject> objects){
 		this.boundary = bounds;
@@ -67,9 +68,15 @@ public class Spawn implements Serializable{
 		this.boundary = bounds;
 	}
 	
+	/**
+	 * This method handles a given spawn event.
+	 * @param e The event to handle.
+	 */
 	public void handleSpawnEvent(SpawnEvent e){
+		// Check if the object the event is about is in our table
 		if(!objects.containsKey(new Integer(e.guid)))
 			return;
+		// Check if its a death event
 		if(e instanceof DeathEvent)
 			objects.get(new Integer(e.guid)).setVisible(false);
 		objects.get(new Integer(e.guid)).spawn();

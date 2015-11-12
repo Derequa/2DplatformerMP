@@ -17,6 +17,7 @@ public abstract class GameObject implements Serializable {
 
 	// An important thingy
 	private static final long serialVersionUID = 1916370976096731770L;
+	// Our unique ID in the game
 	private Integer guid;
 	// The Java.awt shape associated with this game object
 	private Rectangle javaShape = null;
@@ -52,6 +53,7 @@ public abstract class GameObject implements Serializable {
 	
 	/**
 	 * This defines a constructor for a game object with a specific rectangle
+	 * @param guid Our ID in the game.
 	 * @param s The Rectangle to shape us
 	 * @param parent The PApplet in control
 	 */
@@ -150,6 +152,10 @@ public abstract class GameObject implements Serializable {
 		return this.deSpawner != null;
 	}
 	
+	/**
+	 * This method determines if an object is considered static or not.
+	 * @return True if the object is thought of as static, flase if not.
+	 */
 	public abstract boolean isStatic();
 	
 	/**

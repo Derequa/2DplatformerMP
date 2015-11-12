@@ -13,8 +13,13 @@ import events.CollisionEvent;
 public class Collider implements Serializable{
 	
 	private static final long serialVersionUID = 8617237478201678739L;
+	// The table of objects in the game
 	Hashtable<Integer, GameObject> objects = null;
 	
+	/**
+	 * This creates a new Collider system attached to the master object table.
+	 * @param objects The table of object/GUIDs in the game.
+	 */
 	public Collider(Hashtable<Integer, GameObject> objects){
 		this.objects = objects;
 	}
@@ -130,17 +135,29 @@ public class Collider implements Serializable{
 		}
 	}
 	
+	/**
+	 * This method handles a Collision event.
+	 * @param e The description of the event we need to handle.
+	 */
 	public void handleCollisionEvent(CollisionEvent e){
 		Integer guid1 = new Integer(e.guid1);
 		Integer guid2 = new Integer(e.guid2);
+		// Find the GUIDs of the two objects
 		if(objects.containsKey(guid1) && objects.containsKey(guid2))
+			// Handle collision stuffs for both objects
 			collide(objects.get(new Integer(e.guid1)), objects.get(new Integer(e.guid2)));
 		
 	}
 	
+	/**
+	 * This method handles un-colliding two objects.
+	 * @param g1 A GameObject.
+	 * @param g2 Another GameObject that is not colliding with the first.
+	 */
 	public void handleNoCollide(GameObject g1, GameObject g2){
-		
+		// Check the type for Movable
 		if((g1 instanceof Moveable) && (g2 instanceof Moveable) && !(g1 instanceof Player) && !(g2 instanceof Player)){
+			// Set no collision for both objects
 			((Moveable) g1).setCollided(false);
 			((Moveable) g2).setCollided(false);
 		}
@@ -148,16 +165,24 @@ public class Collider implements Serializable{
 			clearCollisions((Moveable) g1, g2);
 			clearCollisions((Moveable) g2, g1);
 		}
+		// If one is Moveable run clearCollisions on it
 		else if(g1 instanceof Moveable)
 			clearCollisions((Moveable) g1, g2);
 		else if(g2 instanceof Moveable)
 			clearCollisions((Moveable) g2, g1);
 	}
 	
+	/**
+	 * This is a helper method for uncolliding a Moveable object and a regular (static) GameObject.
+	 * @param m The Moveable to uncollide.
+	 * @param g The static GameObject to uncollide.
+	 */
 	private void clearCollisions(Moveable m, GameObject g){
 		// Signal we are no longer collided
 		GameObject g1 = (GameObject) m;
+		// Remove it from the collision table
 		g1.collidedWith.put(g, new Boolean(false));
+		// Check if its in our directional collisions
 		if(g.equals(g1.collidedFromLeft))
 			g1.collidedFromLeft = false;
 		else if(g.equals(g1.collidedFromRight))
@@ -167,7 +192,7 @@ public class Collider implements Serializable{
 		else if(g.equals(g1.collidedFromBottom))
 			g1.collidedFromBottom = false;
 	
-		// Check for no collisions
+		// Check for no collisions at all
 		if(!g1.collidedWith.containsValue(new Boolean(true))){
 			m.setCollided(false);
 			m.setOnFloor(false);

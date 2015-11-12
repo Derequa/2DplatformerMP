@@ -1,13 +1,10 @@
 package server;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Hashtable;
-
 import events.NewPlayerEvent;
-import model.Player;
 
 /**
  * This class runs in its own thread, and its sole purpose is to make new
@@ -22,9 +19,13 @@ public class ConnectionManager implements Runnable{
 	private Hashtable<Integer, Boolean> workerNums = new Hashtable<Integer, Boolean>();
 	// Our server socket
 	private ServerSocket serverSocket;
-	
+	// The GameManager object we are tied to
 	public GameManager gm = null;
 	
+	/**
+	 * This constructs a ConnectionManager and ties it to a GameManager.
+	 * @param parent The GameManager we are tied to.
+	 */
 	public ConnectionManager(GameManager parent){
 		this.gm = parent;
 	}
@@ -48,18 +49,18 @@ public class ConnectionManager implements Runnable{
 				for(num = 0 ; workerNums.containsKey(new Integer(num)) && workerNums.get(new Integer(num)).booleanValue() ; num++);
 				// Add the worker number as being used
 				workerNums.put(new Integer(num), new Boolean(true));
-				// Make a new Server thread
 				
+				// Lock the game state
 				GameManager.stateLock.acquire();
 				// Make new player
 				int newPlayerGuid = GameManager.guidMaker++;
 				NewPlayerEvent e = new NewPlayerEvent(GameManager.globalTime.getTime(), 0, newPlayerGuid);
 				// Make associated event
 				GameManager.eventManager.raiseNewPlayerEvent(e);
-				// Send all objects
+				// Unlock game state
 				GameManager.stateLock.release();
 				
-				
+				// Make a new Server thread
 				Server newServer = new Server(newSocket, num, workerNums, newPlayerGuid);
 				Thread newThread = new Thread(newServer);
 				// Add the thread to the list of threads

@@ -16,16 +16,24 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+/**
+ * This class implements a GUI for the Client's replay system.
+ * @author Derek Batts
+ *
+ */
 public class ClientManager extends JFrame implements ActionListener {
 
 	private static final long serialVersionUID = 7251259630714833216L;
+	//  The Client we are tied to
 	private static Client myClient;
 	
+	// Panels
 	JPanel panel = new JPanel();
 	JPanel panel_1 = new JPanel();
 	JPanel panel_2 = new JPanel();
 	JPanel panel_3 = new JPanel();
 	
+	// Buttons
 	JButton btnStartRecording = new JButton("Start Recording");
 	JButton btnStopRecording = new JButton("Stop Recording");
 	JButton btnPlay = new JButton("Play");
@@ -35,13 +43,22 @@ public class ClientManager extends JFrame implements ActionListener {
 	JButton btnxSpeed = new JButton("2x Speed");
 	JButton btnNormalSpeed = new JButton("Normal Speed");
 	
+	// A label thingy
 	JLabel lblPlaybackSpeed = new JLabel("Playback Speed:");
 
+	/**
+	 * This makes the GUI and ties it to a client.
+	 * @param c The Client to tie to.
+	 */
 	public ClientManager(Client c) {
 		myClient = c;
 		setupGUI();
 	}
 
+	/**
+	 * A method detailing how to respond to button clicks.
+	 * @param e The event to respond to.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent e){
 		if(e.getSource().equals(btnStartRecording)){
@@ -142,6 +159,9 @@ public class ClientManager extends JFrame implements ActionListener {
 		}
 	}
 	
+	/**
+	 * This updates the state of our buttons based on the state of the client/viewer
+	 */
 	public void setButtons(){
 		if(myClient.recordingReplay){
 			btnStartRecording.setEnabled(false);
@@ -181,9 +201,13 @@ public class ClientManager extends JFrame implements ActionListener {
 		}
 	}
 	
+	/**
+	 * A helper method for setting up the GUI.
+	 */
 	private void setupGUI(){
 		setSize(420, 150);
 		setTitle("Replay Manager");
+		// Crazy GUI stuff
 		Container contentPane = this.getContentPane();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 387, 151);
