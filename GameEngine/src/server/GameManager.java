@@ -1,13 +1,20 @@
 package server;
 
 import java.awt.Rectangle;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 
+import javax.script.ScriptException;
+
+import scripts.*;
 import events.*;
 import model.*;
 import processing.core.PApplet;
@@ -32,6 +39,8 @@ public class GameManager extends PApplet {
 	protected static LinkedList<Socket> clients = new LinkedList<Socket>();
 	// A table mapping players to the server thread/client controlling them
 	protected static Hashtable<Player, Server> playerServerMap = new Hashtable<Player, Server>();
+	// A list of 
+	protected static LinkedList<String> runtimeScripts = new LinkedList<String>();
 	// A thread to listen for incoming connections
 	protected ConnectionManager listener = new ConnectionManager(this);
 	private Thread listenerThread = new Thread(listener);
@@ -43,8 +52,8 @@ public class GameManager extends PApplet {
 	// The event manager for the server
 	public static EventManager eventManager = new EventManager();
 	// A debugging flag
-	public static final boolean debug = false;
-	// Player 1 for playign on the server in debug mode
+	public static final boolean debug = true;
+	// Player 1 for playing on the server in debug mode
 	public Player p1 = null;
 	// A table of all our objects and their GUIDs
 	public static Hashtable<Integer, GameObject> objects = new Hashtable<Integer, GameObject>();
@@ -72,6 +81,7 @@ public class GameManager extends PApplet {
 	protected static OutputStream console = System.out;
 	// A rectangle defining the window
 	StaticRectangle window;
+	MovingPlatform s = new MovingPlatform(guidMaker++, new Rectangle(400, 320, 80, 15), this, null, null);
 	
 	/**
 	 * This method sets up the game
@@ -138,19 +148,23 @@ public class GameManager extends PApplet {
 		// Create a special platform for murder
 		death = new MovingPlatform(guidMaker++, new Rectangle(15, 270, 70, 20), this, motionUpdater, playerDeathZone);
 		death.xMin = 15;
-		death.xMax = 420;
+		death.xMax = 320;
 		death.vMagX = 2;
 		death.yMin = 270;
 		death.yMax = 270;
 		death.setColor(255, 10, 10);
 		death.setVisible(true);
 		objects.put(death.getGUID(), death);
+		s.vMagY = 2;
+		objects.put(s.getGUID(), s);
 		
 		// Make a player in debug mode
 		if(debug){
 			p1 = createPlayer(guidMaker++);
 			objects.put(p1.getGUID(), p1);
 		}
+		
+		doScripts();
 		
 		// Unlock the state
 		stateLock.release();
@@ -170,6 +184,12 @@ public class GameManager extends PApplet {
 			stateLock.acquire();
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
+		}
+		
+		// Runtime scripts
+		for(String s : runtimeScripts){
+			ScriptManager.loadScript(s);
+			ScriptManager.executeScript();
 		}
 		
 		// Step the global time up
@@ -334,5 +354,44 @@ public class GameManager extends PApplet {
 			}
 		}
 		return update;
+	}
+	
+	private void doScripts(){
+		System.out.println("Running startup scripts...");
+		ScriptManager.bindArgument("game_manager", this);
+		ScriptManager.bindArgument("event_manager", eventManager);
+		ScriptManager.bindArgument("s", s);
+		ScriptManager.bindArgument("timeline", globalTime);
+		int i = -1;
+		try{
+			for(i = 0 ; i < Integer.MAX_VALUE ; i++){
+				FileReader reader = new FileReader("resources/scripts/startup_script_" + i + ".js");
+				ScriptManager.loadScript(reader);
+				ScriptManager.executeScript();
+			}
+			
+		} catch (FileNotFoundException e) {
+			System.out.println("Done running startup scripts!");
+		} catch (ScriptException e) {
+			System.out.println("Error running startup script #" + i + "!");
+			e.printStackTrace();
+		}
+		
+		System.out.println("Reading runtime scripts...");
+		try{
+			for(i = 0 ; i < Integer.MAX_VALUE ; i++){
+				FileReader reader = new FileReader("resources/scripts/runtime_script_" + i + ".js");
+				System.out.println("Found: runtime_script_" + i + ".js");
+				runtimeScripts.add("resources/scripts/runtime_script_" + i + ".js");
+				reader.close();
+			}
+			
+		} catch (FileNotFoundException e) {
+			System.out.println("Done reading runtime scripts!");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		
 	}
 }

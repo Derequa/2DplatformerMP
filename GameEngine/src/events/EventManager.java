@@ -1,11 +1,17 @@
 package events;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
+
+import javax.script.ScriptException;
+
 import client.Client;
 import model.*;
+import scripts.ScriptManager;
 import server.GameManager;
 
 /**
@@ -35,8 +41,10 @@ public class EventManager {
 	LinkedList<Spawn> spawnListeners = new LinkedList<Spawn>();
 	LinkedList<Spawn> deathListeners = new LinkedList<Spawn>();
 	LinkedList<HumanIO> inputListeners = new LinkedList<HumanIO>();
+	LinkedList<String> listeningScripts = new LinkedList<String>();
 	LinkedList<GameManager> newPlayerHandlers = new LinkedList<GameManager>();
 	LinkedList<GameManager> playerQuitHandlers = new LinkedList<GameManager>();
+	
 	
 	/**
 	 * This constructs an event manager and builds its queues
@@ -91,6 +99,10 @@ public class EventManager {
 		playerQuitHandlers.add(g);
 	}
 	
+	public void registerScriptEvent(String s){
+		listeningScripts.add(s);
+	}
+	
 	// Event raisers
 	
 	public void raiseCollisionEvent(CollisionEvent e){
@@ -123,6 +135,14 @@ public class EventManager {
 	
 	public void raisePlayerQuitEvent(PlayerQuitEvent e){
 		addEvent(e);
+	}
+	
+	public void raiseScriptEvent(ScriptEvent e){
+		addEvent(e);
+	}
+	
+	public void raiseScriptEvent(int time, int priority, int guid){
+		addEvent(new ScriptEvent(time, priority, guid));
 	}
 	
 	public void addAllEvents(Collection<Event> c){
@@ -226,6 +246,18 @@ public class EventManager {
 					// Handle player quiting
 					for(GameManager g : playerQuitHandlers)
 						g.handlePlayerQuit((PlayerQuitEvent) e);
+				}
+				else if(e instanceof ScriptEvent){
+					// Handle player quiting
+					for(String s : listeningScripts){
+						try {
+							ScriptManager.loadScript(new FileReader(s));
+							ScriptManager.bindArgument("guid", ((ScriptEvent) e).guid);
+							ScriptManager.executeScript();
+						} catch (FileNotFoundException | ScriptException e1) {
+							e1.printStackTrace();
+						}
+					}
 				}
 			}
 		}
