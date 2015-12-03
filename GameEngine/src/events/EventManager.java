@@ -248,7 +248,7 @@ public class EventManager {
 						g.handlePlayerQuit((PlayerQuitEvent) e);
 				}
 				else if(e instanceof ScriptEvent){
-					// Handle player quiting
+					// Handle a Script event
 					for(String s : listeningScripts){
 						try {
 							ScriptManager.loadScript(new FileReader(s));

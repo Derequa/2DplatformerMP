@@ -43,7 +43,7 @@ public class ScriptManager {
 	}
 	
 	/**
-	 * Will load the script source from the provided filename.
+	 * Will load the script source from the provided filereader object.
 	 * @throws ScriptException 
 	 */
 	public static void loadScript(FileReader f) throws ScriptException {

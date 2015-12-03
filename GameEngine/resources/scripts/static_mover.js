@@ -1,4 +1,3 @@
-// Write a script that handles an event for a given static rectangle
 // This script should be called by the event manager to handle a script event for a
 // certain game object
 function run(){

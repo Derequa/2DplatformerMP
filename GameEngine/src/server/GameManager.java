@@ -39,7 +39,7 @@ public class GameManager extends PApplet {
 	protected static LinkedList<Socket> clients = new LinkedList<Socket>();
 	// A table mapping players to the server thread/client controlling them
 	protected static Hashtable<Player, Server> playerServerMap = new Hashtable<Player, Server>();
-	// A list of 
+	// A list of script filenames to run on each game loop iteration
 	protected static LinkedList<String> runtimeScripts = new LinkedList<String>();
 	// A thread to listen for incoming connections
 	protected ConnectionManager listener = new ConnectionManager(this);
@@ -164,6 +164,7 @@ public class GameManager extends PApplet {
 			objects.put(p1.getGUID(), p1);
 		}
 		
+		// Load important scripts
 		doScripts();
 		
 		// Unlock the state
@@ -186,7 +187,7 @@ public class GameManager extends PApplet {
 			e1.printStackTrace();
 		}
 		
-		// Runtime scripts
+		// Do runtime scripts
 		for(String s : runtimeScripts){
 			ScriptManager.loadScript(s);
 			ScriptManager.executeScript();
@@ -356,14 +357,27 @@ public class GameManager extends PApplet {
 		return update;
 	}
 	
+	/**
+	 * This method reads in some scripts and runs a few.
+	 * Scripts named "startup_script_n" where n is an integer (assuming all are named
+	 * and stored in increasing order) will be loaded and ran in the order they are found.
+	 * Scripts named "runtime_script_n" where n is an integer (again scripts named in increasing
+	 * order starting at 0) will be found and stored for the game to run on each loop iteration.
+	 */
 	private void doScripts(){
+		// Print that we are reading scripts
 		System.out.println("Running startup scripts...");
+		
+		// Set up some arguments for scripts
 		ScriptManager.bindArgument("game_manager", this);
 		ScriptManager.bindArgument("event_manager", eventManager);
 		ScriptManager.bindArgument("s", s);
 		ScriptManager.bindArgument("timeline", globalTime);
+		
+		// Initialize a counter
 		int i = -1;
 		try{
+			// Read scripts and run them until we hit a file not found exception
 			for(i = 0 ; i < Integer.MAX_VALUE ; i++){
 				FileReader reader = new FileReader("resources/scripts/startup_script_" + i + ".js");
 				ScriptManager.loadScript(reader);
@@ -371,14 +385,18 @@ public class GameManager extends PApplet {
 			}
 			
 		} catch (FileNotFoundException e) {
+			// Print we've read and processed all the scripts we could find
 			System.out.println("Done running startup scripts!");
 		} catch (ScriptException e) {
+			// Print an error if one occured running a script
 			System.out.println("Error running startup script #" + i + "!");
 			e.printStackTrace();
 		}
 		
+		// Print we are reading runtime scripts
 		System.out.println("Reading runtime scripts...");
 		try{
+			// Look for and store the filenames of all the runtime scripts we find
 			for(i = 0 ; i < Integer.MAX_VALUE ; i++){
 				FileReader reader = new FileReader("resources/scripts/runtime_script_" + i + ".js");
 				System.out.println("Found: runtime_script_" + i + ".js");
@@ -387,6 +405,7 @@ public class GameManager extends PApplet {
 			}
 			
 		} catch (FileNotFoundException e) {
+			// Notify the console that we are done reading scripts in
 			System.out.println("Done reading runtime scripts!");
 		} catch (IOException e) {
 			e.printStackTrace();

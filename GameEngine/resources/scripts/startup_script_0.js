@@ -1,6 +1,4 @@
-// Write a script to do something at engine startup
-// This script should det up the static rectangle to move and register the script event handler
-
+// This script runs at startup, prints a message, and modifys one of the game objects
 function run(){
 	print('Hello game engine!\n');
 	guid = s.getGUID();
